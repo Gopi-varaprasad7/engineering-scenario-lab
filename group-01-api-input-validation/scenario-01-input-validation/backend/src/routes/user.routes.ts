@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import pool from '../config/db';
-import  bcrypt  from 'bcrypt';
+import bcrypt from 'bcrypt';
+import { validateCreateUser } from '../validators/user.validator';
+import { DatabaseError } from '../types/database';
 
 const router = Router();
 
@@ -26,6 +28,15 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { name, email, age, password } = req.body;
+    const validation = validateCreateUser({ name, email, age, password });
+
+    if (!validation.valid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: validation.errors,
+      });
+    }
     const passwordHash = await bcrypt.hash(password, 12);
 
     const result = await pool.query(
@@ -40,6 +51,15 @@ router.post('/', async (req, res) => {
     });
   } catch (error) {
     console.log('Failed to create user', error);
+
+    const dbError = error as DatabaseError;
+
+    if (dbError.code === '23505') {
+      return res.status(409).json({
+        success: false,
+        message: 'Email already exists',
+      });
+    }
 
     res.status(500).json({
       success: false,
