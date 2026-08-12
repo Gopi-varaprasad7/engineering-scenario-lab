@@ -1,13 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { validateUserForm } from './validator/user.validator';
-
-// Define user type if using TypeScript
-interface User {
-  id: string | number;
-  name: string;
-  email: string;
-  age: number;
-}
+import { createUser } from './api/users';
 
 function App() {
   const [form, setForm] = useState({
@@ -19,6 +12,7 @@ function App() {
 
   const [message, setMessage] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = event.target;
@@ -36,38 +30,22 @@ function App() {
     setErrors({});
 
     const validateError = validateUserForm(form);
-      if(Object.keys(validateError).length > 0){
-        setErrors(validateError);
-        return;
-      }
+    if (Object.keys(validateError).length > 0) {
+      setErrors(validateError);
+      return;
+    }
 
     try {
-      
-      const response = await fetch('http://localhost:5001/api/users', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: form.name,
-          email: form.email,
-          age: Number(form.age),
-          password: form.password,
-        }),
+      setIsSubmitting(true);
+
+      const data = await createUser({
+        name: form.name,
+        email: form.email,
+        age: Number(form.age),
+        password: form.password,
       });
-      const data = await response.json();
 
-      if (!response.ok) {
-        if (response.status === 400) {
-          setErrors(data.errors || {});
-        } else {
-          setMessage(data.message || 'Something went wrong');
-        }
-
-        return;
-      }
-
-      setMessage('User created successfully');
+      setMessage(data.message);
 
       setForm({
         name: '',
@@ -77,7 +55,26 @@ function App() {
       });
     } catch (error) {
       console.error(error);
-      setMessage("Unable to connect to server");
+
+      if (typeof error === 'object' && error !== null && 'status' in error) {
+        const apiError = error as {
+          status: number;
+          data: {
+            message?: string;
+            errors?: Record<string, string>;
+          };
+        };
+
+        if (apiError.status === 400) {
+          setErrors(apiError.data.errors || {});
+        } else {
+          setMessage(apiError.data.message || 'Something went wrong');
+        }
+      } else {
+        setMessage('Unable to connect to server');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
   return (
@@ -121,7 +118,9 @@ function App() {
 
         {errors.password && <p>{errors.password}</p>}
 
-        <button type='submit'>Create User</button>
+        <button type='submit' disabled={isSubmitting}>
+          {isSubmitting ? 'Creating..' : 'Create User'}
+        </button>
       </form>
       {message && <p>{message}</p>}
     </div>
