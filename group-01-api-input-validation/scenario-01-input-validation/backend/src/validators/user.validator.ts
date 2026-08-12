@@ -36,6 +36,7 @@ export const validateCreateUser = (input: UserInput): ValidationResult => {
   }
 
   // Email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (typeof input.email !== 'string') {
     errors.email = 'Email must be a string';
   } else {
@@ -43,6 +44,8 @@ export const validateCreateUser = (input: UserInput): ValidationResult => {
 
     if (!email) {
       errors.email = 'Email is required';
+    } else if (!emailRegex.test(email)) {
+      errors.email = 'Invalid email format';
     } else if (!email.endsWith('@gmail.com')) {
       errors.email = 'Email must end with @gmail.com';
     }

@@ -11,8 +11,8 @@ describe('POST /api/users', () => {
   });
   it('should create a new user', async () => {
     const response = await request(app).post('/api/users').send({
-      name: 'Test',
-      email: 'testuser123@gmail.com',
+      name: 'Test User',
+      email: 'test@yahoo.com"',
       age: 25,
       password: 'Password123!',
     });
